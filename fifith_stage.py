@@ -1,29 +1,32 @@
 
+# units: kilometer, kilogram, second
+# coordinate system: the origin is in the center of the moon
+#at the initial moment oX is directed at the Moon, oY is directed at the North pole
 import math
 import sys
 import matplotlib.pyplot as plt
 import pylab
 from numpy import *
 output = open('moontoearth.txt', 'w')
-INPUT_FILE = 'input.txt'
+INPUT_FILE = 'input1.txt'
 gEarth = 0.00981
 gMoon = 0.00162
 rEarth = 6375
 rMoon = 1738
-GM = gEarth * rEarth * rEarth
-Gm = gMoon * rMoon * rMoon
+GM = gEarth * rEarth * rEarth#G * Earth_mass
+Gm = gMoon * rMoon * rMoon #G * Moon_mass
 R = 384405  # radius of the Moon's orbit
 pi = math.pi
 Tmoon = 2 * pi * math.sqrt(R * R * R / GM)
-dryMass = 10300  # сухая масса стадии разгона
-F = 95.75 # реактивная тяга
-u = 3.05  # фактическая скорость выпуска ускоряющей ступени
-q = F / u  # потребление топлива (в килограммах в секунду) ускоряющей стадии
+dryMass = 10300  #dry mass of the accelerating stage
+F = 95.75 #jet force of the accelerating stage
+u = 3.05  #actual exhaust velocity of the accelerating stage
+q = F / u  #fuel consumption (kilograms per second) of the accelerating stage
 
 
 class Vector:
     def plus(a, b):
-        # возвращает сумму векторов
+        # returns the sum of a and b
         ans = Vector()
         ans.x = a.x + b.x
         ans.y = a.y + b.y
@@ -31,7 +34,7 @@ class Vector:
         return ans
 
     def minus(a, b):
-        # возвращает разность векторов
+        # returns the difference between a and b
         ans = Vector()
         ans.x = a.x - b.x
         ans.y = a.y - b.y
@@ -39,11 +42,11 @@ class Vector:
         return ans
 
     def absV(a):
-        # возвращает модудь вектора
+        # returns the absolute value of a
         return math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z)
 
     def mult(k, a):
-        # результат умножения вектора на скаляр
+        # returns product of scalar k and vector a
         ans = Vector()
         ans.x = k * a.x
         ans.y = k * a.y
@@ -51,7 +54,7 @@ class Vector:
         return ans
 
     def angle(v, u):
-        # возвращает угол между веторами
+        # returns value of the angle between v and u
         a = Vector.absV(v)
         b = Vector.absV(u)
         c = v.x * u.x + v.y * u.y + v.z * u.z
@@ -66,7 +69,7 @@ class Vector:
 
 
 class RVTME:
-    # содержит текущую позицию, скорость, время общее массовое и булево состояние двигателя
+    # contains current position, velocity, time total mass and boolean state of the engine (0 - off, q - acceleration)
     # (0 - off, q - acceleration)
     def copy(rvtme):
         ans = RVTME()
@@ -79,7 +82,7 @@ class RVTME:
 
 
 def moonPosition(time):
-    # положение Луны в данный момент времени(т.к. она обращается)
+    # returns the vector of Moon's position
     global R, pi, Tmoon
     ans = Vector()
     ans.x = R * math.cos(2 * pi * time / Tmoon)
@@ -89,7 +92,7 @@ def moonPosition(time):
 
 
 def moonV(time):
-    # скорость Луны в данный момент времени
+    # returns the vector of Moon's velocity
     global Tmoon, pi, R
     ans = Vector()
     ans.x = -2 * pi * R / Tmoon * math.sin(2 * pi * time / Tmoon)
@@ -99,12 +102,12 @@ def moonV(time):
 
 
 def timestep(a, deltaT=0.00005):
-    # возвращает непостоянный промежуток времени, чтобы сделать нашу модель более точной
+    # returns non-constant timestep so as to make our model more accurate
     return deltaT / Vector.absV(a)
 
 
 def acc(r, v, time, mass, engine):
-    # возвращает ускорение устройства в данный момент времени
+    # returns the acceleration of the apparatus
     global GM, Gm, q, F, q2, F2
     aEarth = Vector.mult(-GM / (Vector.absV(r) * Vector.absV(r) * Vector.absV(r)), r)
     moon = Vector.minus(r, moonPosition(time))
@@ -116,12 +119,12 @@ def acc(r, v, time, mass, engine):
         aEngine.z = 0
     if engine == q:
         aEngine = Vector.mult(F / mass / Vector.absV(v), v)
-        # пусть сила и скорость будут сонаправлены
+        # let jet force and velocity be co-directed
     return Vector.plus(aEngine, Vector.plus(aEarth, aMoon))
 
 
 def nextRVTME(previous, timestep):
-    # возвращает следующее значение положения и скорости устройства (методом Рунге-Кутты)
+    # returns the next value of position and velocity of the apparatus (by the Runge-Kutta method)
     ans = RVTME()
     v1 = Vector.mult(timestep, acc(previous.r, previous.v, previous.t, previous.m, previous.engine))
     r1 = Vector.mult(timestep, previous.v)
@@ -153,7 +156,7 @@ def nextRVTME(previous, timestep):
 
 
 def test(rvtme):
-    # возвращает расстояние до Земли, когда наша скорость параллельна поверхности Земли
+    # returns the distance to the Earth when our velocity is parallel to the Earth's surface
     angle = pi / 2 - Vector.angle(rvtme.r, rvtme.v)
     while (angle < 0) or (Vector.absV(rvtme.r) > 100000):
         rvtme = nextRVTME(rvtme, timestep(acc(rvtme.r, rvtme.v, rvtme.t, rvtme.m, rvtme.engine)))
@@ -169,13 +172,19 @@ def readFloat(f):
 def main():
     global dryMass, GM, Gm, q, q2, R, rMoon, pi, u
     f = open(INPUT_FILE, 'r')
-    x = readFloat(f)
-    y = readFloat(f)
-    z = readFloat(f)
-    vx = readFloat(f)
-    vy = readFloat(f)
-    vz = readFloat(f)
-    mFuel = readFloat(f)  # Масса топлива
+    string = open('to3.txt').readlines()
+    mm = array([[float(i) for i in string[k].split()] for k in range((len(string)))])
+    mSpent = int(mm[0][4])  # Fuel in the SM, spent on the flight to the Moon
+    v = readFloat(f)
+    h = readFloat(f)
+    mFuel = 17700 - mSpent  # Remaining fuel in the SM
+    # We calculate the appropriate start point, based on the data of the output file of stage 4
+    x = R + (rMoon + h / 1000) * math.cos(math.asin(math.sqrt(GM * (rMoon + h / 1000) / 2 / Gm / R)))
+    y = (rMoon + h / 1000) * math.sqrt(GM * (rMoon + h / 1000) / 2 / Gm / R)
+    z = 0
+    vx = (math.sqrt(GM * (rMoon + h / 1000) / 2 / Gm / R)) * v
+    vy = 1.0184 - math.cos(math.asin(math.sqrt(GM * (rMoon + h / 1000) / 2 / Gm / R))) * v
+    vz = 0
     rvtme = RVTME()
     rvtme.r = Vector()
     rvtme.v = Vector()
@@ -192,12 +201,13 @@ def main():
              math.sqrt(2 * Gm / Vector.absV(Vector.minus(rvtme.r, moonPosition(rvtme.t)))) + \
              math.sqrt(100 / Vector.absV(Vector.minus(rvtme.r, moonPosition(rvtme.t))))
 
-    # нам нужно увеличить нашу скорость примерно на это значение
+    # we need to increase our velocity approximately by this value
     tau = rvtme.m / q * (1 - math.exp(-deltaV / u))
     print(deltaV, " ", tau)
 
-    # время разгона(согласно уравнению Циолковского)
-    rvtme.engine = q  # взлетаем
+    # we need to keep the engine on for approximately this time (according to the Tsiolkovsky equation)
+    # -------------------------------------------acceleration-------------------------------------
+    rvtme.engine = q
     i = 0
     while rvtme.t < tau:
         rvtme = nextRVTME(rvtme, timestep(acc(rvtme.r, rvtme.v, rvtme.t, rvtme.m, rvtme.engine)))
@@ -212,9 +222,8 @@ def main():
     print(math.sqrt(2 * Gm / Vector.absV(Vector.minus(rvtme.r, moonPosition(rvtme.t)))))
     print(Vector.absV(Vector.minus(rvtme.r, moonPosition(rvtme.t))))
 
-    # ускорение
-    # ждем 1 час
-    # вначале полета есть время, когда скорость параллельна Земле. Проходим расстояние, когда скорость параллельна
+    # -------------------------------------------acceleration-------------------------------------
+    # --------------------------------------------waiting for 1 hour------------------------------
     while rvtme.t < 3600:
         rvtme = nextRVTME(rvtme, timestep(acc(rvtme.r, rvtme.v, rvtme.t, rvtme.m, rvtme.engine)))
         output.write(str(rvtme.r.x) + '\t'
@@ -224,8 +233,8 @@ def main():
         if i % 50000 == 0:
             print(rvtme.r.x, " ", rvtme.r.y)
 
-    # ждем час
-    # корректируем
+    # --------------------------------------------waiting for 1 hour-----------------------------
+    # --------------------------------------------correction-------------------------------------
     copy = RVTME.copy(rvtme)
     testR = test(copy)
     print(testR)
@@ -237,6 +246,8 @@ def main():
     print("Reached 1 cm tolerance")
     print("We must increase our velocity by ", 1000 * Vector.absV(Vector.minus(copy.v, rvtme.v)), " m/s")
     rvtme.v = Vector.copy(copy.v)
+    # --------------------------------------------correction-------------------------------------------------
+
     angle = pi / 2 - Vector.angle(rvtme.r, rvtme.v)
     while angle < 0:
         rvtme = nextRVTME(rvtme, timestep(acc(rvtme.r, rvtme.v, rvtme.t, rvtme.m, rvtme.engine), 0.00001))
@@ -249,30 +260,30 @@ def main():
 
     print("-----------------------------------")
     print("Finish!")
-    print(math.sqrt(rvtme.r.x*rvtme.r.x + rvtme.r.y*rvtme.r.y)-rEarth)
-    print(rvtme.m - dryMass)
+    print(math.sqrt(rvtme.r.x*rvtme.r.x + rvtme.r.y*rvtme.r.y)-rEarth) #height of our orbit
+    print(rvtme.m - dryMass)#check that the fuel is enough
 main()
 
 string = open('moontoearth.txt').readlines()
 m = array([[float(i) for i in string[k].split()] for k in range((len(string)))])
 from matplotlib.pyplot import *
 plt.title(' y(x) ', size=11)
-plot(list(m[:, 0]), list(m[:, 1]), "blue", markersize=0.1)
-plt.xlabel('Координата x, км')
-plt.ylabel('Координата y, км')
+plot(list(m[:, 0]/1000), list(m[:, 1]/1000), "blue", markersize=0.1)
+plt.xlabel('Coordinate x, km*10^3')
+plt.ylabel('Coordinate y, km*10^3')
 plt.grid()
 show()
 
 plt.title(' r(t) ', size=11)
-plot(list(m[:, 4]), list(m[:, 2]), "blue", markersize=0.1)
-plt.ylabel('Расстояние, км ')
-plt.xlabel('Время, c')
+plot(list(m[:, 4]/1000), list(m[:, 2]/1000), "blue", markersize=0.1)
+plt.ylabel('Distance, km*10^3')
+plt.xlabel('Time, s*1000')
 plt.grid()
 show()
 
 plt.title(' V(t) ', size=11)
-plot(list(m[:, 4]), list(m[:, 3]), "blue", markersize=0.1)
-plt.ylabel('Скорость, км/с ')
-plt.xlabel('Время, с')
+plot(list(m[:, 4]/1000), list(m[:, 3]), "blue", markersize=0.1)
+plt.ylabel('Velocity, km/с ')
+plt.xlabel('Time, s*1000')
 plt.grid()
 show()
