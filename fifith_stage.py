@@ -1,4 +1,3 @@
-
 # units: kilometer, kilogram, second
 # coordinate system: the origin is in the center of the moon
 #at the initial moment oX is directed at the Moon, oY is directed at the North pole
@@ -8,7 +7,7 @@ import matplotlib.pyplot as plt
 import pylab
 from numpy import *
 output = open('moontoearth.txt', 'w')
-INPUT_FILE = 'input1.txt'
+INPUT_FILE = 'from_4_to_5.txt'
 gEarth = 0.00981
 gMoon = 0.00162
 rEarth = 6375
@@ -165,18 +164,18 @@ def test(rvtme):
     return Vector.absV(rvtme.r)
 
 
-def readFloat(f):
-    return float(f.readline().strip())
 
 
 def main():
     global dryMass, GM, Gm, q, q2, R, rMoon, pi, u
-    f = open(INPUT_FILE, 'r')
-    string = open('to3.txt').readlines()
+    f = open(INPUT_FILE, 'r').readlines()
+    mmm = array([[float(i) for i in f[k].split()] for k in range((len(f)))])
+    string = open('from_2_to_3_and_5.txt').readlines()
     mm = array([[float(i) for i in string[k].split()] for k in range((len(string)))])
-    mSpent = int(mm[0][4])  # Fuel in the SM, spent on the flight to the Moon
-    v = readFloat(f)
-    h = readFloat(f)
+    mSpent = mm[0][4]  # Fuel in the SM, spent on the flight to the Moon
+    v = mmm[0][0]/1000
+    h = mmm[0][1]
+    print(v,h)
     mFuel = 17700 - mSpent  # Remaining fuel in the SM
     # We calculate the appropriate start point, based on the data of the output file of stage 4
     x = R + (rMoon + h / 1000) * math.cos(math.asin(math.sqrt(GM * (rMoon + h / 1000) / 2 / Gm / R)))
@@ -283,7 +282,8 @@ show()
 
 plt.title(' V(t) ', size=11)
 plot(list(m[:, 4]/1000), list(m[:, 3]), "blue", markersize=0.1)
-plt.ylabel('Velocity, km/с ')
+plt.ylabel('Velocity, km/s ')
 plt.xlabel('Time, s*1000')
 plt.grid()
 show()
+
